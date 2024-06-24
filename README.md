@@ -1,7 +1,6 @@
 # Proyecto realizado en Oracle SQL Developer:
 
-## El propósito del proyecto es crear una Base de Datos con las tablas necesarias para llevar a cabo el proceso de compra de un cliente, desde la creación de un usuario hasta
-## el pago del producto/s de una órden.
+## El propósito del proyecto es crear una Base de Datos con las tablas necesarias para llevar a cabo el proceso de compra de un cliente, desde la creación de un usuario hasta el pago del producto/s de una órden.
 
 En primer lugar, creamos un ambiente adaptado a un usuario,
 
