@@ -1,0 +1,678 @@
+--- CREACION DE AMBIENTE --- 
+ 
+CREATE USER tienda_user IDENTIFIED BY tienda_password;
+GRANT CONNECT, RESOURCE TO tienda_user;
+ 
+-- Creacion de Usuario y Contraseña -
+-- Creacion de  Tablespace --
+CREATE TABLESPACE tienda_tbs DATAFILE 'tienda_tbs.dbf' SIZE 100M AUTOEXTEND ON;
+ 
+ 
+--- CREACION DE TABLAS ---
+ 
+create table Clientes (
+    id_cliente number primary key,
+    nombre_cliente varchar2(50) not null,
+    email_cliente varchar2(50) unique not null,
+    telefono_cliente varchar2(15),
+    fecha_registro date default sysdate
+);
+ 
+create table Productos (
+    id_producto number primary key,
+    nombre_producto varchar2(50) not null,
+    descripcion_producto varchar2(255),
+    precio_producto number not null,
+    id_categoria number,
+    foreign key (id_categoria) references Categorias(id_categoria)
+);
+ 
+create table Categorias (
+    id_categoria number primary key,
+    nombre_categoria varchar2(50) not null
+);
+ 
+create table Ordenes (
+    id_orden number primary key,
+    fecha_orden date default sysdate,
+    estado_orden varchar2(20) default 'pendiente',
+    id_cliente number,
+    foreign key (id_cliente) references Clientes(id_cliente)
+);
+ 
+create table Detalle_orden (
+    id_detalle number primary key,
+    cantidad_detalle number not null,
+    precio_unitario number not null,
+    id_orden number,
+    id_producto number,
+    foreign key (id_orden) references Ordenes(id_orden),
+    foreign key (id_producto) references Productos(id_producto)
+);
+ 
+create table Inventario (
+    id_inventario number primary key,
+    cantidad_inventario number not null,
+    id_producto number,
+    foreign key (id_producto) references Productos(id_producto)
+);
+ 
+create table Proveedores (
+    id_proveedor number primary key,
+    nombre_proveedor varchar2(50) not null,
+    contacto_proveedor varchar2(50)
+);
+ 
+create table Pagos (
+    id_pago number primary key,
+    fecha_pago date default sysdate,
+    monto number not null,
+    metodo_pago varchar2(20) not null,
+    id_orden number,
+    foreign key (id_orden) references Ordenes(id_orden)
+);
+ 
+create table Direcciones (
+    id_direccion number primary key,
+    direccion varchar2(255) not null,
+    id_cliente number,
+    foreign key (id_cliente) references Clientes(id_cliente)
+);
+ 
+create table Usuarios (
+    id_usuario number primary key,
+    username varchar2(50) unique not null,
+    password varchar2(50) not null
+);
+ 
+-- INSERTAR REGISTROS --
+ 
+insert into Categorias (id_categoria, nombre_categoria) values (1, 'electrónica');
+insert into Categorias (id_categoria, nombre_categoria) values (2, 'ropa');
+insert into Categorias (id_categoria, nombre_categoria) values (3, 'hogar');
+ 
+insert into Productos (id_producto, nombre_producto, descripcion_producto, precio_producto, id_categoria) 
+values (1, 'smartphone', 'teléfono inteligente de última generación', 300.00, 1);
+ 
+insert into Productos (id_producto, nombre_producto, descripcion_producto, precio_producto, id_categoria) 
+values (2, 'jeans', 'pantalones de mezclilla', 40.00, 2);
+ 
+insert into Clientes (id_cliente, nombre_cliente, email_cliente, telefono_cliente)
+values (1, 'juan pérez', 'juan@example.com', '12345678');
+ 
+insert into Clientes (id_cliente, nombre_cliente, email_cliente, telefono_cliente)
+values (2, 'maría lópez', 'maria@example.com', '87654321');
+ 
+insert into Direcciones (id_direccion, id_cliente, direccion)
+values (1, 1, 'calle 1, ciudad a');
+ 
+insert into Direcciones (id_direccion, id_cliente, direccion)
+values (2, 2, 'calle 2, ciudad b');
+ 
+-- CREACION DE PROCEDIMIENTOS ALMACENADOS --
+ 
+-- Tabla cliente --
+create or replace procedure select_cliente is
+begin
+    for rec in (select * from Clientes) loop
+        dbms_output.put_line('ID: ' || rec.id_cliente || ' Nombre: ' || rec.nombre_cliente);
+    end loop;
+exception
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_cliente(
+    p_id_cliente in number,
+    p_nombre in varchar2,
+    p_email in varchar2,
+    p_telefono in varchar2) is
+begin
+    insert into Clientes (id_cliente, nombre_cliente, email_cliente, telefono_cliente)
+    values (p_id_cliente, p_nombre, p_email, p_telefono);
+exception
+    when dup_val_on_index then
+        dbms_output.put_line('Error: El cliente ya existe');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_cliente(
+    p_id_cliente in number,
+    p_nombre in varchar2,
+    p_email in varchar2,
+    p_telefono in varchar2) is
+begin
+    update Clientes
+    set nombre_cliente = p_nombre, email_cliente = p_email, telefono_cliente = p_telefono
+    where id_cliente = p_id_cliente;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Cliente no encontrado');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_cliente(p_id_cliente in number) is
+begin
+    delete from Clientes where id_cliente = p_id_cliente;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Cliente no encontrado');
+    when others then
+        dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla productos --
+create or replace procedure select_producto is
+begin
+    for rec in (select * from Productos) loop
+        dbms_output.put_line('ID: ' || rec.id_producto || ' Nombre: ' || rec.nombre_producto);
+    end loop;
+exception
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_producto(
+    p_id_producto in number,
+    p_nombre in varchar2,
+    p_descripcion in varchar2,
+    p_precio in number,
+    p_id_categoria in number) is
+begin
+    insert into Productos (id_producto, nombre_producto, descripcion_producto, precio_producto, id_categoria)
+    values (p_id_producto, p_nombre, p_descripcion, p_precio, p_id_categoria);
+exception
+    when dup_val_on_index then
+        dbms_output.put_line('Error: El producto ya existe');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_producto(
+    p_id_producto in number,
+    p_nombre in varchar2,
+    p_descripcion in varchar2,
+    p_precio in number,
+    p_id_categoria in number) is
+begin
+    update Productos
+    set nombre_producto = p_nombre, descripcion_producto = p_descripcion, precio_producto = p_precio, id_categoria = p_id_categoria
+    where id_producto = p_id_producto;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Producto no encontrado');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_producto(p_id_producto in number) is
+begin
+    delete from Productos where id_producto = p_id_producto;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Producto no encontrado');
+    when others then
+        dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Categorias --
+create or replace procedure select_categoria is
+begin
+    for rec in (select * from Categorias) loop
+        dbms_output.put_line('ID: ' || rec.id_categoria || ' Nombre: ' || rec.nombre_categoria);
+    end loop;
+exception
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_categoria(
+    p_id_categoria in number,
+    p_nombre in varchar2) is
+begin
+    insert into Categorias (id_categoria, nombre_categoria)
+    values (p_id_categoria, p_nombre);
+exception
+    when dup_val_on_index then
+        dbms_output.put_line('Error: La categoria ya existe');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_categoria(
+    p_id_categoria in number,
+    p_nombre in varchar2) is
+begin
+    update Categorias
+    set nombre_categoria = p_nombre
+    where id_categoria = p_id_categoria;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Categoria no encontrada');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_categoria(p_id_categoria in number) is
+begin
+    delete from Categorias where id_categoria = p_id_categoria;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Categoria no encontrada');
+    when others then
+        dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Ordenes --
+create or replace procedure select_ordenes is
+begin
+    for rec in (select * from Ordenes) loop
+        dbms_output.put_line('ID: ' || rec.id_orden || ' Cliente ID: ' || rec.id_cliente || ' Fecha: ' || rec.fecha_orden);
+    end loop;
+exception
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_orden(
+    p_id_orden in number,
+    p_id_cliente in number,
+    p_fecha_orden in date,
+    p_estado in varchar2) is
+begin
+    insert into Ordenes (id_orden, id_cliente, fecha_orden, estado_orden)
+    values (p_id_orden, p_id_cliente, p_fecha_orden, p_estado);
+exception
+    when dup_val_on_index then
+        dbms_output.put_line('Error: La orden ya existe');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_orden(
+    p_id_orden in number,
+    p_id_cliente in number,
+    p_fecha_orden in date,
+    p_estado in varchar2) is
+begin
+    update Ordenes
+    set id_cliente = p_id_cliente, fecha_orden = p_fecha_orden, estado_orden = p_estado
+    where id_orden = p_id_orden;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Orden no encontrada');
+    when others then
+        dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_orden(p_id_orden in number) is
+begin
+    delete from Ordenes where id_orden = p_id_orden;
+exception
+    when no_data_found then
+        dbms_output.put_line('Error: Orden no encontrada');
+    when others then
+        dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Detalle_Orden
+create or replace procedure select_detalle_orden is
+begin
+    for rec in (select * from Detalle_Orden) loop
+    dbms_output.put_line('ID: ' || rec.id_detalle || ' Orden ID: ' || rec.id_orden || ' Producto ID: ' || rec.id_producto || ' Cantidad: ' || rec.cantidad_detalle);
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_detalle_orden(
+    p_id_detalle in number, 
+    p_id_orden in number, 
+    p_id_producto in number, 
+    p_cantidad in number, 
+    p_precio_unitario in number) is
+begin
+    insert into Detalle_Orden (id_detalle, id_orden, id_producto, cantidad_detalle, precio_unitario)
+    values (p_id_detalle, p_id_orden, p_id_producto, p_cantidad, p_precio_unitario);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: El detalle de orden ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_detalle_orden(
+    p_id_detalle in number, 
+    p_id_orden in number, 
+    p_id_producto in number, 
+    p_cantidad in number, 
+    p_precio_unitario in number) is
+begin
+    update Detalle_Orden
+    set id_orden = p_id_orden, id_producto = p_id_producto, cantidad_detalle = p_cantidad, precio_unitario = p_precio_unitario
+    where id_detalle = p_id_detalle;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Detalle de orden no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_detalle_orden(p_id_detalle in number) is
+begin
+    delete from Detalle_Orden where id_detalle = p_id_detalle;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Detalle de orden no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+END;
+ 
+-- Tabla Inventario --
+create or replace procedure select_inventario is
+begin
+    for rec in (select * from Inventario) loop
+    dbms_output.put_line('ID: ' || rec.inventario || ' Producto ID: ' || rec.id_producto || ' Producto ID: ' || rec.id_producto || ' Cantidad: ' || rec.cantidad_inventario);
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_inventario(
+    p_id_inventario in number, 
+    p_id_producto in number, 
+    p_cantidad in number) is
+begin
+    insert into Inventario (id_inventario, id_producto, cantidad_inventario)
+    values (p_id_inventario, p_id_producto, p_id_cantidad);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: El inventario ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_inventario(
+    p_id_inventario in number, 
+    p_id_producto in number, 
+    p_cantidad in number) is
+begin
+    update Inventario 
+    set id_producto = p_id_producto, cantidad_inventario = p_cantidad
+    values id_inventario = p_id_inventario;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Inventario no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_inventario(p_id_inventario in number) is
+begin
+    delete from Inventario where id_inventario = p_id_inventario;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Inventario no encontrada');
+    when others then
+    dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Proveedores --
+create or replace procedure select_proveedores is
+begin
+    for rec in (select * from Proveedores) loop
+    dbms_output.put_line('ID: ' || rec.id_proveedor || ' Nombre: ' || rec.nombre_proveedor);
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_proveedor(
+    p_id_proveedor in number, 
+    p_nombre in varchar2, 
+    p_contacto in varchar2) is
+begin
+    insert into Proveedores (id_proveedor, nombre_proveedor, contacto_proveedor)
+    values (p_id_proveedor, p_nombre, p_id_contacto);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: El proveedor ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_proveedor(
+    p_id_proveedor in number, 
+    p_nombre in varchar2, 
+    p_contacto in varchar2) is
+begin
+    update Proveedores 
+    set nombre_proveedor = p_nombre, cantidad_proveedor = p_contacto
+    values id_proveedor = p_id_proveedor;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: proveedor no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_proveedor(p_id_proveedor in number) is
+begin
+    delete from Proveedores where id_proveedor = p_id_proveedor;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: proveedor no encontrado');
+    when others then
+    dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Pago --
+create or replace procedure select_pagos is
+begin
+    for rec in (select * from Pagos) loop
+    dbms_output.put_line('ID: ' || rec.id_pago || ' Orden ID: ' || rec.id_orden || ' Monto: ' || rec.monto );
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_proveedor(
+    p_id_pago in number, 
+    p_id_orden in number, 
+    p_fecha_pago in date,
+    p_monto in number,
+    p_metodo_pago in varchar2) is
+begin
+    insert into Pagos (id_pago, id_orden, fecha_pago, monto, metodo_pago)
+    values (p_id_pago, p_id_orden, p_fecha_pago, p_monto, p_metodo_pago);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: El pago ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_pago(
+    p_id_pago in number, 
+    p_id_orden in number, 
+    p_fecha_pago in date,
+    p_monto in number,
+    p_metodo_pago in varchar2) is
+begin
+    update Pagos 
+    set id_orden = p_id_orden, fecha_pago = p_fecha_pago,monto = p_monto, metodo_pago =p_metodo_pago
+    values id_pago = p_id_pago;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: pago no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_pago(p_id_pago in number) is
+begin
+    delete from Pagos where id_pago = p_id_pago;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Pago no encontrado');
+    when others then
+    dbms_output.put_line('Error: '|| SQLERRM);
+end;
+ 
+-- Tabla Direcciones --
+create or replace procedure select_direcciones is
+begin
+    for rec in (select * from Direcciones) loop
+    dbms_output.put_line('ID: ' || rec.id_direccion || ' Cliente ID: ' || rec.id_cliente || ' Direccion: ' || rec.direccion );
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_direccion(
+    p_id_direccion in number, 
+    p_id_cliente in number, 
+    p_direccion in varchar2) is
+begin
+    insert into Direcciones (id_direccion, id_cliente, direccion)
+    values (p_id_direccion, p_id_cliente, p_direccion);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: La direccion ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_direccion(
+    p_id_direccion in number, 
+    p_id_cliente in number, 
+    p_direccion in varchar2) is
+begin
+    update Direcciones 
+    set id_cliente = p_id_cliente, direecion = p_direccion
+    values id_direccion = p_id_direccion;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Direccion no encontrada');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_direccion(p_id_direccion in number) is
+begin
+    delete from Direcciones where id_direccion = p_id_direccion;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Direccion no encontrada');
+    when others then
+    dbms_output.put_line('Error: '|| SQLERRM);
+end
+ 
+-- Tabla Usuarios --
+create or replace procedure select_usuarios is
+begin
+    for rec in (select * from Usuarios) loop
+    dbms_output.put_line('ID: ' || rec.id_usuario || ' Nombre de usuario: ' || rec.username);
+    end loop;
+exception
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure insert_usuario(
+    p_id_usuario in number, 
+    p_username in varchar2, 
+    p_password in varchar2) is
+begin
+    insert into Usuarios (id_usuario, username, password)
+    values (p_id_usuario, p_username, p_password);
+exception
+    when dup_val_on_index then
+    dbms_output.put_line('Error: El usuario ya existe');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure update_usuario(
+    p_id_usuario in number, 
+    p_username in varchar2, 
+    p_password in varchar2) is
+begin
+    update Usuarios 
+    set username = p_username, password = p_password 
+    values id_usuario = p_id_usuario;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Usuario no encontrado');
+    when others then
+    dbms_output.put_line('Error: ' || SQLERRM);
+end;
+ 
+create or replace procedure delete_usuario(p_id_usuario in number) is
+begin
+    delete from Usuarios where id_usuario = p_id_usuario;
+exception
+    when no_data_found then
+    dbms_output.put_line('Error: Usuario no encontrada');
+    when others then
+    dbms_output.put_line('Error: '|| SQLERRM);
+end
+ 
+-- Ejecución de Procedimientos --
+ 
+BEGIN
+    -- Seleccionar todos los clientes
+    select_cliente;
+    
+    -- Insertar un nuevo cliente
+    insert_cliente(1, 'Juan Perez', 'juan.perez@example.com', '123456789');
+    
+    -- Actualizar un cliente existente
+    update_cliente(1, 'Juan Pérez', 'juan.p@example.com', '987654321');
+    
+    -- Eliminar un cliente
+    delete_cliente(1);
+    
+    -- Seleccionar todos los productos
+    select_producto;
+    
+    -- Insertar un nuevo producto
+    insert_producto(1, 'Producto 1', 'Descripción del Producto 1', 99.99, 1);
+    
+    -- Actualizar un producto existente
+    update_producto(1, 'Producto 1 Actualizado', 'Descripción Actualizada', 89.99, 1);
+    
+    -- Eliminar un producto
+    delete_producto(1);
+    
+    -- Seleccionar todas las categorías
+    select_categoria;
+    
+    -- Insertar una nueva categoría
+    insert_categoria(1, 'Categoría 1');
+    
+    -- Actualizar una categoría existente
+    update_categoria(1, 'Categoría 1 Actualizada');
+    
+    -- Eliminar una categoría
+    delete_categoria(1);
+    
+    -- Seleccionar todas las órdenes
+    select_ordenes;
+    
+    -- Insertar una nueva orden
+    insert_orden(1, 1, sysdate, 'Pendiente');
+    
+    -- Actualizar una orden existente
+    update_orden(1, 1, sysdate, 'Enviada');
+    
+    -- Eliminar una orden
+    delete_orden(1);
+END;
